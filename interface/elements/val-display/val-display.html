@@ -1,0 +1,319 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<script src="data.js"></script>
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-styles/typography.html">
+
+<dom-module id="val-display">
+	<template>
+		<style>
+			:host {
+				display:block;
+				
+				
+				
+				
+			}
+			.content {
+				display:flex;
+				flex-wrap: wrap;
+				transition: all 500ms ease;
+			}
+			svg {				
+				width: 90%;				
+			}
+			.vertline {
+				stroke:#eaf3f5;
+				stroke-width:1;
+			}
+			.horzline {
+				stroke:#bfbebe;
+				stroke-width:1;
+			}
+			.zerohline {
+				stroke:#5b8598;
+			}
+			.zerovline {
+				stroke:#5b8598;
+			}
+			#gridlines text {
+				text-shadow: -1px -1px 1px black;
+				fill: rgba(255,255,255,0.75);
+				font-size: 3vh;
+			}
+			#sliders {
+				display: flex;
+				position: relative;
+				
+				padding: 0 1vw;
+				width: 100%;
+			}
+			#sliders>* {
+				margin: auto;
+			}
+			.datachunk {
+				fill:none;
+				stroke:red;
+				stroke-width:4;
+				opacity:1;
+
+			}
+			.datachunkgroup:nth-child(1) .datachunk{
+				stroke:green;
+			}
+			.datachunkgroup:nth-child(2) .datachunk{
+				stroke:teal;
+			}
+			.datachunkgroup:nth-child(3) .datachunk {
+				stroke:maroon;
+			}
+			.datachunkgroup .circlepointertext {
+				paint-order: stroke;
+				stroke:white;
+				stroke-width:1vh;
+			}
+			.datachunkgroup:nth-child(1) .circlepointertext {
+				fill:green;
+			}
+			.datachunkgroup:nth-child(2) .circlepointertext {
+				fill:teal;
+			}
+			.datachunkgroup:nth-child(3) .circlepointertext {
+				fill:maroon;
+			}
+			.circlepointercircle {
+				fill:#000;
+				fill-opacity:0;
+			}
+			.circlepointertext {
+				transform: scale(0);
+			}
+			.circlepointer:hover .circlepointertext {
+				transform: scale(1);
+			}
+			#setupInput {
+				position: absolute;
+				top: 50px;
+				right: 50px;
+				float: right;
+			}
+			#accountInput {
+				display: block;
+			}
+			#eventsInput {
+				margin-top: 5px;
+				display: block;
+			}
+			
+			#buttonrun {
+				margin-top: 5px;
+				float: right;
+			}
+		</style>
+		
+		<div>
+			<div id="sliders">
+				<div id='setupInput'>
+					<textarea id='accountInput' cols="25" rows="25" ></textarea>
+					<textarea id='eventsInput' cols="25" rows="40" ></textarea>
+					<button id='buttonrun'>Update</button>
+				</div>
+			<div>Refill Lifetime: <span id="refilllifetimeLabel" class="caption">[[refillLifetimeVal]]</span>
+				<paper-slider id="refilllifetime" min="1" max="900" pin value="{{refillLifetimeVal}}"></paper-slider>
+			</div>
+			<div>Refill Curve: <span id="refillcurveLabel" class="caption">[[refillCurveVal]]</span>
+				<paper-slider id="refillcurve" min="1" max="600" pin value="{{refillCurveVal}}"></paper-slider>
+			</div>
+			<div>Refill: <span id="refillLabel" class="caption">[[refillVal]]</span>
+				<paper-slider id="refill" min="1" max="2000" pin value="{{refillVal}}"></paper-slider>
+			</div>
+			<div>Delay: <span id="delayLabel" class="caption">[[delayVal]]</span>
+				<paper-slider id="delay" min="1" max="180" pin value="{{delayVal}}"></paper-slider>
+			</div>
+			<div>Tx Lifetime: <span id="txlifetimeLabel" class="caption">[[txLifetimeVal]]</span>
+				<paper-slider id="lifetime" min="1" max="900" pin value="{{txLifetimeVal}}"></paper-slider>
+			</div>
+			<div>Tx Curve: <span id="txcurveLabel" class="caption">[[txCurveVal]]</span>
+				<paper-slider id="curve" min="1" max="600" pin value="{{txCurveVal}}"></paper-slider>
+			</div>
+		</div>
+		
+		<svg preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"  width$="[[wh.x]]" height$="[[wh.y]]" id="svgInterface" shape-rendering="geometricPrecision">
+			<g id="gridlines">
+			<g id="vertlines">
+
+			</g>
+			<g id="horzlines"></g>
+			</g>
+			<g id="datalines"></g>
+			</g>
+		</svg>
+		
+		</div>
+	</template>
+
+	<script>
+		(function() {
+			'use strict';
+			var gui = require('nw.gui');
+			var win = gui.Window.get();
+			Polymer({
+				ready: function () {
+					
+					var self = this
+					document.getElementById('buttonrun').addEventListener('click', function () {
+						self.dataChange()
+					})
+					
+					document.getElementById('eventsInput').value = `tom
+	3	farmer	50
+farmer
+	10	tom	10`
+	
+					document.getElementById('accountInput').value = `40
+tom
+farmer
+`
+				this.dataChange();
+				},
+				is: 'val-display',
+				properties: {
+					wh: {
+						type: Object,
+						value: {x:"100px",y:"100px"}
+					},
+					scales: {
+						type: Object,
+						value: {x:800,y:600},
+						observer: 'scaleChange'
+					},
+					data: {
+						type: Object,
+						value: {},
+					},
+					refillLifetimeVal: {
+						type: Number,
+						value:20,
+						observer: 'dataChange'
+					},
+					refillCurveVal: {
+						type: Number,
+						value:50,
+						observer: 'dataChange'
+					},
+					txLifetimeVal: {
+						type: Number,
+						value:40,
+						observer: 'dataChange'
+					},
+					txCurveVal: {
+						type: Number,
+						value:50,
+						observer: 'dataChange'
+					},
+					refillVal: {
+						type: Number,
+						value:500,
+						observer: 'dataChange'
+					},
+					delayVal: {
+						type: Number,
+						value:20,
+						observer: 'dataChange'
+					}
+				},
+				dataChange: function(data) {
+					var input = document.getElementById('eventsInput')
+					var blocks = parseInt(document.getElementById('accountInput').value.split('\n')[0])
+					data = this.data = nw.process.mainModule.exports.feedback({
+						refillLifetime:this.refillLifetimeVal,
+						refillCurve:this.refillCurveVal/100,
+						txLifetime:this.txLifetimeVal,
+						txCurve:this.txCurveVal/100,
+						refill:this.refillVal,
+						delay:this.delayVal,
+						input:input.value,
+						blocks: blocks
+					});
+					var arrmin = function(arr){return Math.min.apply(null, arr)},
+					arrmax = function(arr){return Math.max.apply(null, arr)};
+					var spreadsmin = [];
+					var spreadsmax = [];
+					var widths = [];
+					var results = [];
+					for (var chunk in data) {
+						spreadsmin.push(arrmin(data[chunk]));
+						spreadsmax.push(arrmax(data[chunk]));
+						widths.push(data[chunk].length);
+					}
+					results = [arrmin(spreadsmin),arrmax(spreadsmax),arrmax(widths)];
+					var workarea = nw.Screen.screens[0].work_area;
+					var maxY = workarea.height-workarea.y;
+					var maxX = workarea.width-workarea.x;
+					win.width = parseInt(0.9*maxX);
+					win.x = parseInt(0.05*maxX);
+					win.height = parseInt(0.9*maxY);
+					win.y = parseInt(0.05*maxY);
+					var meanval = (results[1]-results[0])/10;
+					var pow = 0;
+					var vertDiv = 0;
+					while (arrmax([Math.pow(10,pow),meanval,Math.pow(10,pow+1)])==meanval) {
+						pow++;
+					}
+					var vertStep = Math.pow(10,pow+1);
+					vertDiv = Math.floor(results[1]/Math.pow(10,pow+1))+1;
+					var vertRatio = (0.80*maxY)/(vertStep*vertDiv);
+					this.scales = {x:0.85*maxX,y:0.85*maxY};
+					var leftShift = 0.05;
+					var xStep = 0;
+					var hlines = [];
+					var vlines = [];
+					for (var i = vertDiv-1; i >-1; i--) {
+						hlines.push('<line class="horzline val-display '+(i==0?'zerohline':'')+'" x1="'+leftShift*maxX+'" y1="'+(vertDiv-i)*vertStep*vertRatio+'" x2="'+0.85*maxX+'" y2="'+(vertDiv-i)*vertStep*vertRatio+'" /><text class="vertText val-display" text-anchor="end" x="'+0.8*leftShift*maxX+'" y="'+((vertDiv-i)*vertStep*vertRatio+16*vertRatio)+'" font-family="Verdana" font-size="'+32*vertRatio+'">'+i*vertStep+'</text>');
+					}
+					xStep = (0.8*maxX)/results[2];
+					for (var i = 0; i < results[2]+1; i++) {
+						var txt = (i>0 && i< results[2]+1 && i % 5 === 0)?'<text class="vertText val-display" text-anchor="middle" x="'+(leftShift*maxX+xStep*i)+'" y="'+0.85*maxY+'" font-family="Verdana" font-size="'+32*vertRatio+'">'+i+'</text>':'';// console.log(i);
+						vlines.push('<line class="vertline val-display '+(i==0?'zerovline':'')+'" x1="'+(leftShift*maxX+xStep*i)+'" y1="0" x2="'+(leftShift*maxX+xStep*i)+'" y2="'+0.85*maxY+'" />'+txt);
+					}
+					this.$.horzlines.innerHTML = hlines.join('');
+					this.$.vertlines.innerHTML = vlines.join('');
+					var datalines = [];
+					var dataline = '';
+					var circles = [];
+					var accountToGraph = document.getElementById('accountInput').value
+					for (var chunk in data) {
+						if ((accountToGraph === "" || accountToGraph.indexOf('\n' + chunk + '\n') != -1)) {
+							circles = [];
+							dataline = '<g class="datachunkgroup val-display"><path ';
+							dataline +=  'id="data_'+chunk+'" class="datachunk val-display" d="';
+							for (var i = 0, txt, xshift, yshift; i < data[chunk].length; i++) {
+								txt = chunk + ' (' + i + ' - ' + Math.round(data[chunk][i]*100)/100 + ')';
+								xshift = (leftShift*maxX+i*xStep);
+								yshift = ((vertDiv*vertStep)-data[chunk][i])*vertRatio;
+								dataline += i===0?'M'+xshift+','+yshift+' ':'L'+xshift+','+yshift+' ';
+								circles.push('<g class="circlepointer val-display"><circle class="circlepointercircle val-display" cx="'+xshift+'" cy="'+yshift+'" r="'+0.45*xStep+'" /><text class="circlepointertext val-display" text-anchor="middle" x="'+xshift+'" y="'+yshift+'">'+txt+'</text></g>')
+							}
+						datalines.push(dataline+='" />'+circles.join('')+'</g>');	
+						}
+					}
+					this.$.datalines.innerHTML = datalines.join('');
+				},
+				scaleChange: function() {
+					this.$.svgInterface.setAttribute('viewBox','0 0 '+this.scales.x+' '+this.scales.y);
+					this.set('wh.x',this.scales.x+'px');
+					this.set('wh.y',this.scales.y+'px');
+					var vertL = this.$.vertlines;
+					vertL.innerHTML = '';
+				}
+			});
+		})();
+	</script>
+</dom-module>

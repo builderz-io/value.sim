@@ -1,0 +1,16 @@
+{
+  "name": "Value",
+  "node-main": "./hub/val.js",
+  "main": "./interface/index.html",
+  "window": {
+    "toolbar": false,
+    "width": 800,
+    "height": 600
+  },
+  "webkit": {
+    "plugin": true
+  },
+  "devDependencies": {
+    "nw": "^0.17.6"
+  }
+}
